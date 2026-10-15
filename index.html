@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f3a5f">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Sales Planner Helper</title>
+<style>
+:root{--bg:#f3f5f8;--card:#fff;--ink:#17202b;--mut:#5b6776;--line:#d5dbe3;--pri:#1f3a5f;--pri-ink:#fff;--ok:#1b7f3b;--warn:#b45309;--bad:#b91c1c;--hi:#fff3bf}
+@media (prefers-color-scheme:dark){:root{--bg:#10151c;--card:#1a222d;--ink:#eef2f7;--mut:#9aa7b8;--line:#2f3b4b;--pri:#5b8fd6;--pri-ink:#07121f;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--hi:#4a4210}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:84px}
+header{background:var(--pri);color:var(--pri-ink);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+header h1{font-size:18px;margin:0}
+header input{font-size:16px;border:0;border-radius:8px;padding:6px 8px}
+main{padding:12px 16px;max-width:760px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+h2{font-size:19px;margin:0 0 6px}
+.help{color:var(--mut);font-size:15px;margin:4px 0 10px}
+label{display:block;font-weight:600;margin:12px 0 2px}
+label small{display:block;font-weight:400;color:var(--mut);font-size:14px}
+input[type=text],input[type=number],input[type=date],select,textarea{width:100%;font-size:20px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+button{font:inherit;font-weight:600;border:0;border-radius:12px;padding:14px 16px;min-height:48px;background:var(--pri);color:var(--pri-ink)}
+button.sec{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button.danger{background:transparent;color:var(--bad);border:1px solid var(--bad)}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border-radius:0;background:transparent;color:var(--mut);min-height:60px;font-size:14px}
+nav button.on{color:var(--pri);box-shadow:inset 0 3px 0 var(--pri)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{flex:0 0 auto;min-width:64px;padding:10px 8px;min-height:44px;background:var(--card);color:var(--ink);border:1px solid var(--line);font-size:16px}
+.chip.on{background:var(--pri);color:var(--pri-ink)}
+.chip.done::after{content:" ✓";color:var(--ok)}.chip.on.done::after{color:inherit}
+.note{padding:10px 12px;border-radius:10px;margin:8px 0;font-size:15px}
+.note.ok{background:rgba(27,127,59,.13);color:var(--ok)}.note.warn{background:rgba(180,83,9,.14);color:var(--warn)}.note.bad{background:rgba(185,28,28,.12);color:var(--bad)}.note.info{background:var(--bg);color:var(--mut)}
+.big{font-size:26px;font-weight:700}
+.grid-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.grid{border-collapse:collapse;min-width:100%;font-size:19px}
+.grid th,.grid td{border:1px solid var(--line);padding:10px 8px;text-align:right;white-space:nowrap}
+.grid th{background:var(--bg);font-size:15px}
+.grid th.rl{text-align:left;position:sticky;left:0;background:var(--bg);min-width:96px}
+.grid td.hl,.grid th.hl{background:var(--hi)}
+.grid td.bl{color:var(--mut)}
+.out{white-space:pre-wrap;font:22px/1.6 ui-monospace,Menlo,Consolas,monospace;background:var(--bg);border-radius:10px;padding:12px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Sales Planner</h1>
+  <input type="date" id="planDate" aria-label="Planner date">
+</header>
+<main>
+
+<section id="tab-enter">
+  <div class="card">
+    <h2>Enter an hour</h2>
+    <p class="help">Open the <b>Store Hourly KPIs</b> report and use the <b>bottom half</b> of the page (the top half is shifted and doesn't line up). Pick the hour below, then find that row (like <b>12 PM</b>) and type the numbers under <b>TY</b> (this year).</p>
+    <div class="chips" id="hourChips"></div>
+    <div id="hourHelp" class="note info"></div>
+    <label>Sales <small>Sales → TY. Return? Type a minus, like -50 (report shows (50)).</small></label>
+    <input id="fSales" type="number" inputmode="decimal" placeholder="0">
+    <label>Traffic <small>Traffic → TY (people who walked in)</small></label>
+    <input id="fTraffic" type="number" inputmode="numeric" placeholder="0">
+    <label>Conversion % <small>Conversion → TY. Leave blank if the report shows a dash.</small></label>
+    <input id="fConv" type="number" inputmode="decimal" placeholder="e.g. 40.0">
+    <label>Avg Ticket <small>Average Ticket → TY. Only used if Conversion is blank.</small></label>
+    <input id="fAvg" type="number" inputmode="decimal" placeholder="e.g. 225">
+    <label>Buyers (optional) <small>Only if you know the exact count. This overrides the other two.</small></label>
+    <input id="fBuy" type="number" inputmode="numeric" placeholder="leave blank to calculate">
+    <div id="buyersOut" class="note info"></div>
+    <div class="row" style="margin-top:8px">
+      <button id="btnSave">Save hour</button>
+      <button id="btnClear" class="danger">Clear hour</button>
+    </div>
+  </div>
+</section>
+
+<section id="tab-view" class="hidden">
+  <div class="card">
+    <h2>What to write on the paper</h2>
+    <p class="help">Same layout as the planner chart. Write each box in rows 4 to 7. The yellow column is the hour you just finished. Tap a column heading to edit that hour.</p>
+    <div class="grid-wrap"><table class="grid" id="grid"></table></div>
+    <div id="viewNotes"></div>
+  </div>
+  <div class="card">
+    <h2>What's going on</h2>
+    <p class="help">Optional. Fill these in (from the top of the planner) to get a one-line summary.</p>
+    <div class="row">
+      <div><label>Sales goal</label><input id="gGoal" type="number" inputmode="decimal" placeholder="2280"></div>
+      <div><label>LY traffic</label><input id="gLyT" type="number" inputmode="numeric"></div>
+    </div>
+    <div id="summary" class="note info"></div>
+  </div>
+</section>
+
+<section id="tab-weekly" class="hidden">
+  <div class="card">
+    <h2>Weekly Sales Progress</h2>
+    <p class="help">Use the <b>DAY/WTD/MTD</b> report dated the day <b>before</b> today's planner. Only read the <b>WTD</b> columns (the middle group).</p>
+    <div id="weeklyForm"></div>
+  </div>
+  <div class="card">
+    <h2>Write this in the box</h2>
+    <div id="weeklyOut" class="out"></div>
+    <div class="row" style="margin-top:10px"><button id="btnCopyW">Copy text</button></div>
+  </div>
+</section>
+
+<section id="tab-more" class="hidden">
+  <div class="card">
+    <h2>Check against the report's Total row</h2>
+    <p class="help">At the bottom of the Store Hourly KPIs report, find the <b>Total</b> row and type its numbers.</p>
+    <div class="row">
+      <div><label>Sales</label><input id="tSales" type="number" inputmode="decimal"></div>
+      <div><label>Traffic</label><input id="tTraffic" type="number" inputmode="numeric"></div>
+    </div>
+    <div class="row">
+      <div><label>Conversion %</label><input id="tConv" type="number" inputmode="decimal"></div>
+      <div><label>Avg Ticket</label><input id="tAvg" type="number" inputmode="decimal"></div>
+    </div>
+    <div id="totalsOut"></div>
+  </div>
+  <div class="card">
+    <h2>Hourly reminders</h2>
+    <p class="help">Phone web pages can't reliably buzz you when closed, so this makes a calendar file. Open it and add it to your phone's calendar: you'll get an alert at 5 minutes past every hour from 11:05 AM to 9:05 PM, every day.</p>
+    <button id="btnIcs">Download reminders (.ics)</button>
+    <div class="note info">To stop them, delete the "Sales Planner" events from your calendar.</div>
+  </div>
+  <div class="card">
+    <h2>Day tools</h2>
+    <div class="row">
+      <button class="sec" id="btnFillZero">Fill unentered hours with 0</button>
+      <button class="danger" id="btnNewDay">Start new day</button>
+    </div>
+    <p class="help">Everything stays on this phone. Nothing is sent anywhere.</p>
+  </div>
+</section>
+
+</main>
+<nav>
+  <button data-tab="enter" class="on">Enter</button>
+  <button data-tab="view">Paper view</button>
+  <button data-tab="weekly">Weekly</button>
+  <button data-tab="more">More</button>
+</nav>
+
+<script>
+"use strict";
+const COLS=["10-11","11-12","12-1","1-2","2-3","3-4","4-5","5-6","6-7","7-8","8-9"];
+const ROWS=["10 AM","11 AM","12 PM","01 PM","02 PM","03 PM","04 PM","05 PM","06 PM","07 PM","08 PM"];
+const $=id=>document.getElementById(id);
+
+/* ---------- storage ---------- */
+function load(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+let date=load("sp:lastDate",today());
+function blankDay(){return{hours:Array(11).fill(null),totals:{},reconcile:false,goal:"",lyT:"",weekly:{}}}
+let day=blankDay();
+function loadDay(){day=Object.assign(blankDay(),load("sp:day:"+date,{}));if(!Array.isArray(day.hours)||day.hours.length!==11)day.hours=Array(11).fill(null)}
+function saveDay(){save("sp:day:"+date,day);save("sp:lastDate",date)}
+
+/* ---------- math ---------- */
+const num=v=>(v===""||v==null||isNaN(Number(v)))?null:Number(v);
+function buyersOf(h){
+  if(!h)return{n:0,how:"none"};
+  const sales=num(h.sales)||0,traffic=num(h.traffic)||0;
+  const b=num(h.buyers),c=num(h.conv),a=num(h.avg);
+  if(b!=null)return{n:Math.max(0,Math.round(b)),how:"typed"};
+  if(c!=null){
+    const n=Math.round(traffic*c/100);
+    const o={n,how:"conv"};
+    if(a!=null&&a!==0){const alt=Math.round(sales/a);if(alt!==n)o.warn="Conversion gives "+n+" buyers but Sales ÷ Avg Ticket gives "+alt+". Check both numbers.";}
+    return o;
+  }
+  if(a!=null&&a!==0)return{n:Math.max(0,Math.round(sales/a)),how:"avg"};
+  if(traffic>0||sales!==0)return{n:0,how:"unknown",warn:"No conversion, avg ticket or buyers typed, so buyers counted as 0."};
+  return{n:0,how:"none"};
+}
+function isActive(h){return h&&((num(h.sales)||0)!==0||(num(h.traffic)||0)!==0)}
+function lastEntered(){for(let i=10;i>=0;i--)if(day.hours[i])return i;return -1}
+function lastActive(){for(let i=10;i>=0;i--)if(isActive(day.hours[i]))return i;return -1}
+function compute(){
+  const out=[],last=lastEntered(),la=lastActive();
+  const repTotal=num(day.totals.sales);
+  const diff=repTotal==null?0:null;
+  let S=0,T=0,B=0;
+  for(let i=0;i<11;i++){
+    const h=day.hours[i];
+    if(i>last){out.push(null);continue}
+    const s=num(h&&h.sales)||0,t=num(h&&h.traffic)||0;
+    S+=s;T+=t;B+=buyersOf(h).n;
+    let cs=S;
+    if(day.reconcile&&repTotal!=null&&i>=la&&la>=0){cs=repTotal}
+    out.push({actual:s,cum:cs,conv:T>0?B/T*100:0,avg:B>0?cs/B:0,rawCum:S,B,T});
+  }
+  return out;
+}
+const fmtMoney=n=>{const r=Math.round(n);const s=Math.abs(r).toLocaleString("en-US");return r<0?"("+s+")":s};
+const fmtActual=n=>fmtMoney(n);
+const fmtConv=n=>n===0?"0":n.toFixed(1);
+const fmtAvg=n=>n===0?"0":n.toFixed(2);
+const pct=(v)=>{const n=num(v);if(n==null)return"—";return(n>0?"+":"")+n.toFixed(1)+"%"};
+
+/* ---------- tabs ---------- */
+let curHour=0;
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
+  ["enter","view","weekly","more"].forEach(t=>$("tab-"+t).classList.toggle("hidden",t!==b.dataset.tab));
+  render();window.scrollTo(0,0);
+});
+function showTab(t){document.querySelector('nav button[data-tab="'+t+'"]').click()}
+
+/* ---------- enter ---------- */
+function nextEmpty(){const i=day.hours.findIndex(h=>!h);return i<0?10:i}
+function chips(){
+  $("hourChips").innerHTML=COLS.map((c,i)=>'<button class="chip'+(i===curHour?" on":"")+(day.hours[i]?" done":"")+'" data-i="'+i+'">'+c+'</button>').join("");
+  $("hourChips").querySelectorAll("button").forEach(b=>b.onclick=()=>{curHour=+b.dataset.i;fillForm();chips()});
+}
+function fillForm(){
+  const h=day.hours[curHour]||{};
+  $("fSales").value=h.sales??"";$("fTraffic").value=h.traffic??"";$("fConv").value=h.conv??"";$("fAvg").value=h.avg??"";$("fBuy").value=h.buyers??"";
+  $("hourHelp").innerHTML="Planner column <b>"+COLS[curHour]+"</b> = report row <b>"+ROWS[curHour]+"</b> (bottom half of the report).";
+  updateBuyers();
+}
+function formHour(){return{sales:$("fSales").value,traffic:$("fTraffic").value,conv:$("fConv").value,avg:$("fAvg").value,buyers:$("fBuy").value}}
+function updateBuyers(){
+  const b=buyersOf(formHour());const el=$("buyersOut");
+  const how={conv:"traffic × conversion",avg:"sales ÷ avg ticket",typed:"typed by you",unknown:"unknown",none:"nothing entered yet"}[b.how];
+  el.className="note "+(b.warn?"warn":"info");
+  el.innerHTML="Buyers worked out: <b>"+b.n+"</b> ("+how+")"+(b.warn?"<br>"+b.warn:"");
+}
+["fSales","fTraffic","fConv","fAvg","fBuy"].forEach(id=>$(id).oninput=updateBuyers);
+$("btnSave").onclick=()=>{
+  const f=formHour();
+  if(f.sales===""&&f.traffic===""){f.sales="0";f.traffic="0"}
+  if(f.sales==="")f.sales="0";if(f.traffic==="")f.traffic="0";
+  day.hours[curHour]=f;saveDay();
+  const done=curHour;
+  curHour=Math.min(10,nextEmpty());
+  justDone=done;showTab("view");
+};
+$("btnClear").onclick=()=>{day.hours[curHour]=null;saveDay();fillForm();chips();render()};
+let justDone=null;
+
+/* ---------- paper view ---------- */
+function renderGrid(){
+  const c=compute();
+  const hl=i=>i===justDone?" hl":"";
+  let t="<tr><th class='rl'>Hour</th>"+COLS.map((x,i)=>"<th class='"+hl(i).trim()+"' data-i='"+i+"'>"+x+"</th>").join("")+"</tr>";
+  const rows=[["4. Actual",x=>fmtActual(x.actual)],["5. Cumulative",x=>fmtMoney(x.cum)],["6. Conv %",x=>fmtConv(x.conv)],["7. Avg Ticket",x=>fmtAvg(x.avg)]];
+  t+=rows.map(([n,f])=>"<tr><th class='rl'>"+n+"</th>"+c.map((x,i)=>x?"<td class='"+hl(i).trim()+"'>"+f(x)+"</td>":"<td class='bl'>—</td>").join("")+"</tr>").join("");
+  $("grid").innerHTML=t;
+  $("grid").querySelectorAll("th[data-i]").forEach(th=>th.onclick=()=>{curHour=+th.dataset.i;fillForm();chips();showTab("enter")});
+  let notes="";
+  day.hours.forEach((h,i)=>{const b=buyersOf(h);if(b.warn)notes+="<div class='note warn'>"+COLS[i]+": "+b.warn+"</div>"});
+  const rt=num(day.totals.sales),la=lastActive();
+  if(rt!=null&&la>=0){
+    const raw=c[la].rawCum,d=rt-raw;
+    if(d!==0&&Math.abs(d)<=5){
+      notes+=day.reconcile
+        ?"<div class='note ok'>Using the report total ("+fmtMoney(rt)+") for the last column with sales. Hours added up to "+fmtMoney(raw)+". <button class='sec' id='btnUnrec'>Undo</button></div>"
+        :"<div class='note warn'>Your hours add to <b>"+fmtMoney(raw)+"</b> but the report total says <b>"+fmtMoney(rt)+"</b> (report rounding). Write the report total in the last box? <button id='btnRec'>Use "+fmtMoney(rt)+"</button></div>";
+    }
+  }
+  $("viewNotes").innerHTML=notes;
+  if($("btnRec"))$("btnRec").onclick=()=>{day.reconcile=true;saveDay();render()};
+  if($("btnUnrec"))$("btnUnrec").onclick=()=>{day.reconcile=false;saveDay();render()};
+}
+function renderSummary(){
+  $("gGoal").value=day.goal||"";$("gLyT").value=day.lyT||"";
+  const c=compute(),l=lastEntered();const el=$("summary");
+  if(l<0){el.textContent="Enter an hour to see this.";return}
+  const x=c[l],g=num(day.goal),lt=num(day.lyT);
+  const parts=[];
+  if(g!=null&&g>0){const d=x.cum-g;parts.push("Sales $"+fmtMoney(x.cum)+" so far vs goal $"+fmtMoney(g)+" ("+(d>=0?"ahead by $"+fmtMoney(d):"$"+fmtMoney(-d)+" to go")+")")}
+  else parts.push("Sales $"+fmtMoney(x.cum)+" so far");
+  parts.push(x.T+" people in, "+fmtConv(x.conv)+"% bought, avg ticket $"+fmtAvg(x.avg));
+  if(lt!=null&&lt>0)parts.push("traffic "+(x.T>=lt?"is at/above":"is behind")+" last year's "+lt+" for the day");
+  el.textContent=parts.join(" · ")+".";
+}
+$("gGoal").onchange=()=>{day.goal=$("gGoal").value;saveDay();renderSummary()};
+$("gLyT").onchange=()=>{day.lyT=$("gLyT").value;saveDay();renderSummary()};
+
+/* ---------- weekly ---------- */
+const WF=[
+ {k:"sales",l:"Total Sales — WTD Actual",h:"Sales section, first line, WTD Actual. Shown in thousands: 1.5 means $1,500."},
+ {k:"salesVar",l:"Total Sales — WTD %Var LY",h:"Same line, WTD %Var LY. Include the minus sign if negative."},
+ {k:"traffic",l:"Traffic — WTD Actual",h:"KPIs section, Traffic."},
+ {k:"trafficVar",l:"Traffic — WTD %Var to LY",h:"Same line."},
+ {k:"stot",l:"STOT (type in)",h:"Not on these reports. Type it from wherever you normally get it.",manual:1},
+ {k:"conv",l:"Conversion — WTD Actual",h:"KPIs section, Conversion."},
+ {k:"convVar",l:"Conversion — WTD %Var to LY",h:"Same line."},
+ {k:"avg",l:"Ttl Avg Tkt — WTD Actual",h:"KPIs section."},
+ {k:"avgVar",l:"Ttl Avg Tkt — WTD %Var to LY",h:"Same line."},
+ {k:"upt",l:"Retail-UPT — WTD Actual",h:"KPIs section."},
+ {k:"alt",l:"Alter Sales — WTD Actual",h:"Sales section, near the bottom of the list."},
+ {k:"wed",l:"Ttl Wed Grp — WTD Actual",h:"Rental section."},
+ {k:"wedGoal",l:"Wedding Goal (type in)",h:"From your manager. The app remembers it for tomorrow.",manual:1},
+ {k:"nps",l:"NPS (type in)",h:"Not on these reports.",manual:1},
+ {k:"reorders",l:"Reorders (type in)",h:"Not on these reports.",manual:1}
+];
+function renderWeeklyForm(){
+  const w=day.weekly;
+  if(w.wedGoal==null||w.wedGoal==="")w.wedGoal=load("sp:wedGoal","");
+  $("weeklyForm").innerHTML=WF.map(f=>"<label>"+f.l+"<small>"+f.h+"</small></label><input type='number' inputmode='decimal' data-k='"+f.k+"' value='"+(w[f.k]??"")+"'>").join("");
+  $("weeklyForm").querySelectorAll("input").forEach(i=>i.oninput=()=>{
+    day.weekly[i.dataset.k]=i.value;
+    if(i.dataset.k==="wedGoal")save("sp:wedGoal",i.value);
+    saveDay();renderWeeklyOut();
+  });
+  renderWeeklyOut();
+}
+function weeklyLines(){
+  const w=day.weekly,d=v=>num(v)==null?"—":String(num(v));
+  const sales=num(w.sales);
+  return[
+   (sales==null?"$—":"$"+Math.round(sales*1000).toLocaleString("en-US"))+"  "+pct(w.salesVar),
+   "T "+d(w.traffic)+"  "+pct(w.trafficVar),
+   "STOT "+d(w.stot),
+   "Conv. "+(num(w.conv)==null?"—":num(w.conv)+"%")+"  "+pct(w.convVar),
+   "AUT "+d(w.avg)+"  "+pct(w.avgVar),
+   "UPT "+d(w.upt),
+   "Alt. "+d(w.alt),
+   "Wedding "+d(w.wed)+"  Goal "+d(w.wedGoal),
+   "NPS "+d(w.nps),
+   "Reorders "+d(w.reorders)
+  ];
+}
+function renderWeeklyOut(){$("weeklyOut").textContent=weeklyLines().join("\n")}
+$("btnCopyW").onclick=async()=>{try{await navigator.clipboard.writeText(weeklyLines().join("\n"));$("btnCopyW").textContent="Copied ✓"}catch(e){$("btnCopyW").textContent="Copy not available"}setTimeout(()=>$("btnCopyW").textContent="Copy text",1500)};
+
+/* ---------- more ---------- */
+function renderTotals(){
+  const t=day.totals;
+  ["Sales:tSales:sales","Traffic:tTraffic:traffic","Conv:tConv:conv","Avg:tAvg:avg"].forEach(s=>{const[,id,k]=s.split(":");$(id).value=t[k]??""});
+  const l=lastEntered(),el=$("totalsOut");
+  if(l<0){el.innerHTML="";return}
+  const x=compute()[l];const msgs=[];
+  const chk=(name,mine,rep,tol,fmt)=>{if(num(rep)==null)return;const ok=Math.abs(mine-num(rep))<=tol;msgs.push("<div class='note "+(ok?"ok":"bad")+"'>"+(ok?"✓ ":"✗ ")+name+": app "+fmt(mine)+", report "+num(rep)+(ok?"":" — check your hours")+"</div>")};
+  chk("Sales",x.rawCum,t.sales,Math.abs(num(t.sales)||0)<=5?0:5,fmtMoney);
+  chk("Traffic",x.T,t.traffic,0,String);
+  chk("Conversion %",x.conv,t.conv,0.15,fmtConv);
+  chk("Avg ticket",x.avg,t.avg,1,fmtAvg);
+  if(num(t.sales)!=null&&Math.abs(x.rawCum-num(t.sales))>0&&Math.abs(x.rawCum-num(t.sales))<=5)msgs.push("<div class='note warn'>Sales off by a few dollars is normal rounding. See the Paper view tab to use the report total.</div>");
+  const bad=[];
+  el.innerHTML=msgs.join("");
+}
+[["tSales","sales"],["tTraffic","traffic"],["tConv","conv"],["tAvg","avg"]].forEach(([id,k])=>$(id).oninput=()=>{day.totals[k]=$(id).value;saveDay();renderTotals()});
+$("btnFillZero").onclick=()=>{day.hours=day.hours.map(h=>h||{sales:"0",traffic:"0",conv:"",avg:"",buyers:""});saveDay();render();showTab("view")};
+$("btnNewDay").onclick=()=>{
+  if(!confirm("Start a new day? Today's entries will be erased from this phone."))return;
+  try{localStorage.removeItem("sp:day:"+date)}catch(e){}
+  date=today();$("planDate").value=date;day=blankDay();saveDay();curHour=0;justDone=null;render();showTab("enter");
+};
+$("planDate").onchange=()=>{date=$("planDate").value||today();loadDay();curHour=nextEmpty();justDone=null;render()};
+
+/* ---------- reminders (.ics) ---------- */
+$("btnIcs").onclick=()=>{
+  const pad=n=>String(n).padStart(2,"0"),d=new Date();
+  const ds=d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate());
+  const ev=[];
+  for(let i=0;i<11;i++){
+    const hr=11+i,end=hr;
+    ev.push("BEGIN:VEVENT","UID:salesplanner-"+i+"@local","DTSTAMP:"+ds+"T000000Z","DTSTART:"+ds+"T"+pad(hr)+"0500","DTEND:"+ds+"T"+pad(hr)+"1000","RRULE:FREQ=DAILY",
+      "SUMMARY:Sales Planner: fill in "+COLS[i]+" hour","DESCRIPTION:Open the Sales Planner Helper and enter the "+ROWS[i]+" row from the Store Hourly KPIs report.",
+      "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:Sales Planner","TRIGGER:PT0M","END:VALARM","END:VEVENT");
+  }
+  const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Sales Planner Helper//EN","CALSCALE:GREGORIAN",...ev,"END:VCALENDAR"].join("\r\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([ics],{type:"text/calendar"}));a.download="sales-planner-reminders.ics";document.body.appendChild(a);a.click();a.remove();
+};
+
+/* ---------- main ---------- */
+function render(){chips();renderGrid();renderSummary();renderTotals();renderWeeklyForm()}
+$("planDate").value=date;loadDay();curHour=nextEmpty();fillForm();render();
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
